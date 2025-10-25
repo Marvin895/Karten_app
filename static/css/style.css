@@ -1,50 +1,5 @@
-/* Vollbild */
-html, body {
+html, body, #map {
   height: 100%;
   margin: 0;
   padding: 0;
-  font-family: Arial, sans-serif;
-}
-
-/* Karte */
-#map {
-  height: 100%;
-  width: 100%;
-}
-
-/* Topbar */
-#topbar {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  z-index: 1000;
-  background: #ffffffcc;
-  padding: 10px;
-  border-radius: 12px;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.2);
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-/* Inputs & Buttons */
-#search {
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  width: 200px;
-}
-
-#searchBtn, #locBtn, #clearRouteBtn {
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: none;
-  background-color: #4285F4;
-  color: white;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-#searchBtn:hover, #locBtn:hover, #clearRouteBtn:hover {
-  background-color: #3367D6;
 }

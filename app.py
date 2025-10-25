@@ -1,90 +1,39 @@
+from flask import Flask, jsonify, request, send_from_directory
+import requests
 import os
-import sqlite3
-from flask import Flask, render_template, jsonify, request
 
-app = Flask(__name__)
-DB_PATH = "places.db"
+app = Flask(__name__, static_folder="static")
 
-# --- Datenbank initialisieren ---
-def init_db():
-    if not os.path.exists(DB_PATH):
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS places (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT,
-                lat REAL,
-                lon REAL,
-                type TEXT
-            )
-        ''')
-        # Beispiel-Daten
-        c.executemany('INSERT INTO places (name, lat, lon, type) VALUES (?, ?, ?, ?)', [
-            ("Café Central", 48.2082, 16.3738, "cafe"),
-            ("Hauptbahnhof", 48.1857, 16.3771, "station"),
-            ("Stadtpark", 48.2065, 16.3790, "park")
-        ])
-        conn.commit()
-        conn.close()
+# === Dein Foursquare API Key ===
+FOURSQUARE_API_KEY = "fsq3ETr3iUJk01TB/xYrQrNL+y3ZfiTOjd7t8c+sVEAXtEM="
 
+# === Startseite (liefert index.html) ===
+@app.route("/")
+def serve_index():
+    return send_from_directory(app.static_folder, "index.html")
 
-# --- API-Endpunkte ---
+# === Proxy-Endpunkt zu Foursquare ===
+@app.route("/api/places")
+def get_places():
+    lat = request.args.get("lat")
+    lng = request.args.get("lng")
+    radius = request.args.get("radius", 1000)
+    category = request.args.get("category", "cafe")
 
-@app.route('/')
-def index():
-    return render_template('index.html')
+    url = f"https://api.foursquare.com/v3/places/search?ll={lat},{lng}&radius={radius}&categories={category}&limit=50"
+    headers = {
+        "Accept": "application/json",
+        "Authorization": FOURSQUARE_API_KEY
+    }
 
+    response = requests.get(url, headers=headers)
+    return jsonify(response.json())
 
-@app.route('/api/places')
-def api_places():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("SELECT id, name, lat, lon, type FROM places")
-    rows = c.fetchall()
-    conn.close()
+# === Statische Dateien (JS, CSS, Icons usw.) ===
+@app.route("/<path:path>")
+def static_proxy(path):
+    return send_from_directory(app.static_folder, path)
 
-    data = [
-        {"id": r[0], "name": r[1], "lat": r[2], "lon": r[3], "type": r[4]}
-        for r in rows
-    ]
-    return jsonify(data)
-
-
-@app.route('/api/add_place', methods=['POST'])
-def api_add_place():
-    data = request.json
-    if not data or "name" not in data or "lat" not in data or "lon" not in data:
-        return jsonify({"error": "Invalid input"}), 400
-
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute(
-        "INSERT INTO places (name, lat, lon, type) VALUES (?, ?, ?, ?)",
-        (data["name"], data["lat"], data["lon"], data.get("type", "custom"))
-    )
-    conn.commit()
-    conn.close()
-
-    return jsonify({"status": "ok"})
-
-
-@app.route('/api/route')
-def api_route():
-    """Liefert eine Route zwischen zwei Punkten über OSRM (OpenStreetMap Routing)"""
-    start = request.args.get("start")
-    end = request.args.get("end")
-
-    if not start or not end:
-        return jsonify({"error": "Missing parameters"}), 400
-
-    import requests
-    osrm_url = f"https://router.project-osrm.org/route/v1/driving/{start};{end}?overview=full&geometries=geojson"
-    r = requests.get(osrm_url)
-    return jsonify(r.json())
-
-
-# --- Startpunkt ---
-if __name__ == '__main__':
-    init_db()
-    app.run(debug=True)
+# === Start im lokalen Testmodus ===
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
